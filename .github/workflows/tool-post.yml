@@ -1,1 +1,26 @@
+name: Daily GitHub Trending Tools
 
+on:
+  schedule:
+    - cron: '0 6 * * *'  # daily at 6:00 AM UTC (11:30 AM IST)
+  workflow_dispatch:
+
+jobs:
+  post-trending:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Fetch trending repos and send to Discord
+        run: |
+          curl -s https://ghapi.huchen.dev/repositories?language=&since=daily | jq '[.[] | select(.description | test("hack|pentest|exploit|malware|security"; "i"))] | .[:5]' > trending.json
+          
+          message="🔥 **Daily GitHub Trending Hacking Tools**:\n"
+          count=1
+          while read -r name; do
+            message="$message\n$count. $name"
+            count=$((count + 1))
+          done < <(jq -r '.[] | "[**\(.name)**](\(.url)) - \(.description)"' trending.json)
+          
+          curl -H "Content-Type: application/json" \
+               -X POST \
+               -d "{\"content\": \"$message\"}" \
+               ${{ secrets.DISCORD_WEBHOOK_URL }}
