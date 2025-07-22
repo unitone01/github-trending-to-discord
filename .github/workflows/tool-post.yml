@@ -1,26 +1,32 @@
-name: Daily GitHub Trending Tools
+name: Daily Hacking Tool Post
 
 on:
   schedule:
-    - cron: '0 6 * * *'  # daily at 6:00 AM UTC (11:30 AM IST)
-  workflow_dispatch:
+    - cron: "0 6 * * *"  # Everyday 6 AM UTC = 11:30 AM IST
+  workflow_dispatch:  # Manual run option
 
 jobs:
-  post-trending:
+  post-tool:
     runs-on: ubuntu-latest
+
     steps:
-      - name: Fetch trending repos and send to Discord
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Get Random Tool
         run: |
-          curl -s https://ghapi.huchen.dev/repositories?language=&since=daily | jq '[.[] | select(.description | test("hack|pentest|exploit|malware|security"; "i"))] | .[:5]' > trending.json
-          
-          message="🔥 **Daily GitHub Trending Hacking Tools**:\n"
-          count=1
-          while read -r name; do
-            message="$message\n$count. $name"
-            count=$((count + 1))
-          done < <(jq -r '.[] | "[**\(.name)**](\(.url)) - \(.description)"' trending.json)
-          
+          TOOLS=("https://github.com/sqlmapproject/sqlmap" \
+                 "https://github.com/laramies/theHarvester" \
+                 "https://github.com/maurosoria/dirsearch" \
+                 "https://github.com/D4Vinci/Cr3dOv3r" \
+                 "https://github.com/mishakorzik/EmailAllinator")
+
+          RANDOM_TOOL=${TOOLS[$RANDOM % ${#TOOLS[@]}]}
+          echo "TOOL=$RANDOM_TOOL" >> $GITHUB_ENV
+
+      - name: Send to Discord
+        run: |
           curl -H "Content-Type: application/json" \
                -X POST \
-               -d "{\"content\": \"$message\"}" \
-               ${{ secrets.DISCORD_WEBHOOK_URL }}
+               -d "{\"content\": \"🛠️ Daily Hacking Tool: $TOOL\"}" \
+               ${{ secrets.DISCORD_WEBHOOK }}
